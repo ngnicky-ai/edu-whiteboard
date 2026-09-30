@@ -1,0 +1,19 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+*_wpftmp.csproj
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.rsuser
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Local whiteboard files saved while testing
+*.wbd
