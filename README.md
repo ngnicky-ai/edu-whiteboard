@@ -48,7 +48,13 @@ C# / WPF (.NET 8)로 만들었습니다.
 | 100%로 되돌리기 | Ctrl+0 |
 | 텍스트 입력 마침 | Esc |
 
-## 실행 방법
+## 다운로드
+
+[Releases](https://github.com/ngnicky-ai/edu-whiteboard/releases/latest)에서 `EduWhiteboard-버전-win-x64.exe`를 받아 바로 실행하세요.
+.NET 런타임이 포함된 단일 실행 파일이라 따로 설치할 것이 없습니다 (Windows 10/11, 64비트).
+서명되지 않은 프로그램이라 처음 실행할 때 SmartScreen 경고가 나오면 "추가 정보" → "실행"을 누르세요.
+
+## 소스에서 실행하기
 
 필요한 것: Windows 10/11, [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
@@ -58,10 +64,11 @@ cd edu-whiteboard/src/WhiteboardApp
 dotnet run
 ```
 
-실행 파일만 만들려면:
+Releases에 올라간 것과 같은 단일 실행 파일을 직접 만들려면:
 
 ```powershell
-dotnet publish src/WhiteboardApp -c Release -r win-x64 --self-contained false
+dotnet publish src/WhiteboardApp/WhiteboardApp.csproj -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
 
 ## 판서 파일
