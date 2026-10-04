@@ -12,6 +12,8 @@ public partial class CaptureOverlayWindow : Window
 {
     private System.Windows.Point? _startPoint;
     private bool _dragging;
+    private bool _capturing;
+    private readonly RectangleGeometry _hole = new(Rect.Empty);
 
     public BitmapSource? CapturedImage { get; private set; }
 
@@ -23,48 +25,57 @@ public partial class CaptureOverlayWindow : Window
         Top = SystemParameters.VirtualScreenTop;
         Width = SystemParameters.VirtualScreenWidth;
         Height = SystemParameters.VirtualScreenHeight;
+
+        // Dim layer = whole screen minus the selection, so the selected area shows its original colors.
+        DimOverlay.Data = new CombinedGeometry(GeometryCombineMode.Exclude,
+            new RectangleGeometry(new Rect(0, 0, Width, Height)), _hole);
     }
+
+    private void UpdateSelection(Rect rect)
+    {
+        Canvas.SetLeft(SelectionRect, rect.X);
+        Canvas.SetTop(SelectionRect, rect.Y);
+        SelectionRect.Width = rect.Width;
+        SelectionRect.Height = rect.Height;
+        _hole.Rect = rect;
+    }
+
+    private Rect SelectionFrom(Point current) => new(
+        Math.Min(current.X, _startPoint!.Value.X),
+        Math.Min(current.Y, _startPoint.Value.Y),
+        Math.Abs(current.X - _startPoint.Value.X),
+        Math.Abs(current.Y - _startPoint.Value.Y));
 
     private void RootCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_capturing) return;
+
         _startPoint = e.GetPosition(RootCanvas);
         _dragging = true;
-        Canvas.SetLeft(SelectionRect, _startPoint.Value.X);
-        Canvas.SetTop(SelectionRect, _startPoint.Value.Y);
-        SelectionRect.Width = 0;
-        SelectionRect.Height = 0;
+        UpdateSelection(new Rect(_startPoint.Value.X, _startPoint.Value.Y, 0, 0));
         SelectionRect.Visibility = Visibility.Visible;
+        HintBox.Visibility = Visibility.Collapsed;
         RootCanvas.CaptureMouse();
     }
 
     private void RootCanvas_MouseMove(object sender, MouseEventArgs e)
     {
         if (!_dragging || _startPoint is null) return;
-
-        var current = e.GetPosition(RootCanvas);
-        var x = Math.Min(current.X, _startPoint.Value.X);
-        var y = Math.Min(current.Y, _startPoint.Value.Y);
-        var w = Math.Abs(current.X - _startPoint.Value.X);
-        var h = Math.Abs(current.Y - _startPoint.Value.Y);
-
-        Canvas.SetLeft(SelectionRect, x);
-        Canvas.SetTop(SelectionRect, y);
-        SelectionRect.Width = w;
-        SelectionRect.Height = h;
+        UpdateSelection(SelectionFrom(e.GetPosition(RootCanvas)));
     }
 
-    private void RootCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private async void RootCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (!_dragging || _startPoint is null) return;
 
         _dragging = false;
         RootCanvas.ReleaseMouseCapture();
 
-        var end = e.GetPosition(RootCanvas);
-        var x = Math.Min(end.X, _startPoint.Value.X);
-        var y = Math.Min(end.Y, _startPoint.Value.Y);
-        var w = Math.Abs(end.X - _startPoint.Value.X);
-        var h = Math.Abs(end.Y - _startPoint.Value.Y);
+        var selection = SelectionFrom(e.GetPosition(RootCanvas));
+        var x = selection.X;
+        var y = selection.Y;
+        var w = selection.Width;
+        var h = selection.Height;
 
         if (w < 3 || h < 3)
         {
@@ -84,6 +95,13 @@ public partial class CaptureOverlayWindow : Window
         var physW = (int)Math.Round(w * dpiScale.M11);
         var physH = (int)Math.Round(h * dpiScale.M22);
 
+        // The overlay (dim layer, blue border) is still on screen at this point; grabbing the pixels now
+        // would bake it into the picture. Make the overlay fully invisible and give the compositor a
+        // moment to repaint the screen without it before copying.
+        _capturing = true;
+        Opacity = 0;
+        await Task.Delay(150);
+
         CapturedImage = CaptureScreenRegion(physX, physY, physW, physH, 96.0 * dpiScale.M11, 96.0 * dpiScale.M22);
 
         DialogResult = true;
@@ -92,7 +110,7 @@ public partial class CaptureOverlayWindow : Window
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape)
+        if (e.Key == Key.Escape && !_capturing)
         {
             DialogResult = false;
             Close();

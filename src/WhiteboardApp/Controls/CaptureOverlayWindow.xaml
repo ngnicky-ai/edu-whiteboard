@@ -9,13 +9,17 @@
         Background="#01000000"
         Cursor="Cross"
         KeyDown="Window_KeyDown">
-    <Canvas x:Name="RootCanvas"
+    <!-- Near-transparent background keeps the whole screen clickable, including inside the selection "hole". -->
+    <Canvas x:Name="RootCanvas" Background="#01000000"
             MouseLeftButtonDown="RootCanvas_MouseLeftButtonDown"
             MouseMove="RootCanvas_MouseMove"
             MouseLeftButtonUp="RootCanvas_MouseLeftButtonUp">
-        <Rectangle x:Name="DimOverlay" Fill="#55000000" Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Window}}" Height="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}}"/>
-        <Rectangle x:Name="SelectionRect" Stroke="#FF00A8FF" StrokeThickness="2" Fill="#3300A8FF" Visibility="Collapsed"/>
-        <TextBlock x:Name="HintText" Foreground="White" FontSize="16" Text="드래그하여 캡처할 영역을 선택하세요 (Esc: 취소)"
-                   Canvas.Left="20" Canvas.Top="20"/>
+        <!-- Dims everything except the selected area (geometry set in code), so the selection shows its real colors. -->
+        <Path x:Name="DimOverlay" Fill="#66000000" IsHitTestVisible="False"/>
+        <Rectangle x:Name="SelectionRect" Stroke="#FF4C9AFF" StrokeThickness="2" Fill="{x:Null}"
+                   Visibility="Collapsed" IsHitTestVisible="False"/>
+        <Border x:Name="HintBox" Canvas.Left="20" Canvas.Top="20" Background="#CC20232B" CornerRadius="6" Padding="12,6" IsHitTestVisible="False">
+            <TextBlock Foreground="White" FontSize="15" Text="드래그하여 캡처할 영역을 선택하세요 (Esc: 취소)"/>
+        </Border>
     </Canvas>
 </Window>

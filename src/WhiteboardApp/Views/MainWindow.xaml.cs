@@ -662,8 +662,12 @@ public partial class MainWindow : Window
         var image = ClipboardImageReader.TryRead(dpi.PixelsPerInchX, dpi.PixelsPerInchY);
         if (image != null)
         {
+            // Pasted pictures (Excel cells, screenshots from other tools, browser images, image files)
+            // go on the board right away and are also kept in the capture tray for reuse.
             AddImageObject(image);
-            UpdateStatus("이미지를 붙여넣었습니다. 그 위에 펜으로 판서할 수 있습니다.");
+            UpdateStatus(TryAddToTray(image, out var error)
+                ? "그림을 붙여넣고 캡처 보관함에도 저장했습니다. 그 위에 펜으로 판서할 수 있습니다."
+                : $"그림을 붙여넣었습니다. (보관함 저장 실패: {error})");
             return;
         }
 
@@ -727,20 +731,35 @@ public partial class MainWindow : Window
         var image = ScreenCaptureService.CaptureRegion(this);
         if (image == null) return;
 
+        if (TryAddToTray(image, out var error))
+        {
+            SetTrayExpanded(true);
+            UpdateStatus("캡처를 보관함에 넣었습니다. 아래 썸네일을 클릭하면 칠판에 붙습니다.");
+        }
+        else
+        {
+            // Saving failed, but the capture itself is fine: put it on the board so it isn't lost.
+            AddImageObject(image);
+            UpdateStatus($"보관함에 저장하지 못해 칠판에 바로 붙였습니다: {error}");
+        }
+    }
+
+    /// <summary>Saves the image as a new tray item (newest first). Returns false with a message if saving failed.</summary>
+    private bool TryAddToTray(BitmapSource image, out string error)
+    {
         try
         {
             var path = CaptureTrayStore.Save(image);
             _trayItems.Insert(0, TrayItem.From(path));
             UpdateTrayHeader();
-            SetTrayExpanded(true);
             TrayScroll.ScrollToLeftEnd();
-            UpdateStatus("캡처를 보관함에 넣었습니다. 아래 썸네일을 클릭하면 칠판에 붙습니다.");
+            error = string.Empty;
+            return true;
         }
         catch (Exception ex)
         {
-            // Saving failed, but the capture itself is fine: put it on the board so it isn't lost.
-            AddImageObject(image);
-            UpdateStatus($"보관함에 저장하지 못해 칠판에 바로 붙였습니다: {ex.Message}");
+            error = ex.Message;
+            return false;
         }
     }
 
