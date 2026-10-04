@@ -17,3 +17,6 @@
 
 # Local whiteboard files saved while testing
 *.wbd
+
+# Vibe-coding guide (kept local, not published to GitHub)
+docs/vibe-coding-guide.html

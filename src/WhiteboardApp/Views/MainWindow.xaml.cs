@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -686,14 +687,120 @@ public partial class MainWindow : Window
         }
     }
 
+    // ===================== Capture tray =====================
+    // Captures go to the tray first (not straight onto the board); clicking a thumbnail places it.
+
+    private readonly ObservableCollection<TrayItem> _trayItems = new();
+
+    private void InitializeCaptureTray()
+    {
+        CaptureTrayList.ItemsSource = _trayItems;
+        try
+        {
+            foreach (var path in CaptureTrayStore.List())
+            {
+                try
+                {
+                    _trayItems.Add(TrayItem.From(path));
+                }
+                catch (Exception)
+                {
+                    // Skip a capture file that can't be decoded instead of hiding the whole tray.
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"캡처 보관함을 읽지 못했습니다: {ex.Message}");
+        }
+        UpdateTrayHeader();
+    }
+
+    private void UpdateTrayHeader()
+    {
+        TrayHeaderText.Text = _trayItems.Count == 0 ? "📷 캡처 보관함" : $"📷 캡처 보관함 ({_trayItems.Count})";
+        TrayEmptyText.Visibility = _trayItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void CaptureButton_Click(object sender, RoutedEventArgs e)
     {
         var image = ScreenCaptureService.CaptureRegion(this);
-        if (image != null)
+        if (image == null) return;
+
+        try
         {
-            AddImageObject(image);
-            UpdateStatus("화면 캡처 이미지를 추가했습니다. 그 위에 펜으로 판서할 수 있습니다.");
+            var path = CaptureTrayStore.Save(image);
+            _trayItems.Insert(0, TrayItem.From(path));
+            UpdateTrayHeader();
+            SetTrayExpanded(true);
+            TrayScroll.ScrollToLeftEnd();
+            UpdateStatus("캡처를 보관함에 넣었습니다. 아래 썸네일을 클릭하면 칠판에 붙습니다.");
         }
+        catch (Exception ex)
+        {
+            // Saving failed, but the capture itself is fine: put it on the board so it isn't lost.
+            AddImageObject(image);
+            UpdateStatus($"보관함에 저장하지 못해 칠판에 바로 붙였습니다: {ex.Message}");
+        }
+    }
+
+    private void TrayItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: TrayItem item }) return;
+
+        try
+        {
+            AddImageObject(CaptureTrayStore.Load(item.Path));
+            UpdateStatus("캡처를 칠판에 붙였습니다. 보관함의 캡처는 그대로 남아 있어 다시 쓸 수 있습니다.");
+        }
+        catch (Exception)
+        {
+            // The file was removed or damaged outside the app; drop the stale thumbnail.
+            _trayItems.Remove(item);
+            UpdateTrayHeader();
+            UpdateStatus("이 캡처 파일을 찾을 수 없어 보관함에서 뺐습니다.");
+        }
+    }
+
+    private void TrayDelete_Click(object sender, RoutedEventArgs e)
+    {
+        // Don't let the click bubble up to the thumbnail and place it on the board.
+        e.Handled = true;
+        if (sender is not FrameworkElement { Tag: TrayItem item }) return;
+
+        try
+        {
+            if (File.Exists(item.Path)) CaptureTrayStore.Delete(item.Path);
+            _trayItems.Remove(item);
+            UpdateTrayHeader();
+            UpdateStatus("캡처를 보관함에서 삭제했습니다 (휴지통에서 복원할 수 있습니다).");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"캡처를 삭제하지 못했습니다:\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void TrayToggle_Click(object sender, RoutedEventArgs e) =>
+        SetTrayExpanded(TrayBody.Visibility != Visibility.Visible);
+
+    private void SetTrayExpanded(bool expanded)
+    {
+        TrayBody.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        TrayToggleButton.Content = expanded ? "접기 ▾" : "펼치기 ▴";
+    }
+
+    private void TrayFolder_Click(object sender, RoutedEventArgs e)
+    {
+        Directory.CreateDirectory(CaptureTrayStore.Folder);
+        System.Diagnostics.Process.Start("explorer.exe", CaptureTrayStore.Folder);
+    }
+
+    // The strip only scrolls sideways, so let the normal (vertical) mouse wheel move it.
+    private void TrayScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        TrayScroll.ScrollToHorizontalOffset(TrayScroll.HorizontalOffset - e.Delta);
+        e.Handled = true;
     }
 
     // Centers new content in the current view, nudging repeated pastes so they don't stack exactly.
@@ -896,6 +1003,7 @@ public partial class MainWindow : Window
             if (!LeaveCurrentBoard()) e.Cancel = true;
         };
 
+        InitializeCaptureTray();
         ShowHome();
     }
 

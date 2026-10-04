@@ -361,6 +361,79 @@
             <TextBlock x:Name="StatusText" Foreground="{StaticResource TextMutedBrush}" FontSize="12" Text="준비됨 — Ctrl+V로 이미지/텍스트 붙여넣기, 📷 버튼으로 화면 캡처"/>
         </Border>
 
+        <!-- Capture tray: screen captures wait here as thumbnails; click one to place it on the board -->
+        <Border DockPanel.Dock="Bottom" Background="{StaticResource ToolbarBrush}" BorderBrush="{StaticResource ToolbarBorderBrush}" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="14,4,8,0">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="🗂 폴더 열기" ToolTip="캡처 보관함 폴더를 탐색기로 엽니다" Click="TrayFolder_Click"
+                                Style="{StaticResource ToolbarButtonStyle}" FontSize="12" Padding="8,3"/>
+                        <Button x:Name="TrayToggleButton" Content="접기 ▾" Click="TrayToggle_Click"
+                                Style="{StaticResource ToolbarButtonStyle}" FontSize="12" Padding="8,3"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="TrayHeaderText" Text="📷 캡처 보관함" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12.5" FontWeight="SemiBold"/>
+                        <TextBlock Text="· 썸네일을 클릭하면 칠판에 붙습니다" Foreground="{StaticResource TextMutedBrush}" FontSize="12" Margin="8,0,0,0"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <Grid x:Name="TrayBody" Height="104">
+                    <TextBlock x:Name="TrayEmptyText" Foreground="{StaticResource TextMutedBrush}" FontSize="12.5"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Text="📷 화면 캡처 버튼으로 캡처한 그림이 여기에 모입니다. 언제든 클릭해서 칠판에 붙이세요."/>
+                    <ScrollViewer x:Name="TrayScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                  PreviewMouseWheel="TrayScroll_PreviewMouseWheel">
+                        <ItemsControl x:Name="CaptureTrayList" Margin="10,2,10,6">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Click="TrayItem_Click" Tag="{Binding}" ToolTip="{Binding ToolTipText}" Margin="4" Cursor="Hand">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Grid>
+                                                    <Border x:Name="Bd" Background="White" CornerRadius="4" Padding="3"
+                                                            BorderThickness="2" BorderBrush="#FF3A3E48">
+                                                        <Image Source="{Binding Thumbnail}" Height="78" MaxWidth="170" Stretch="Uniform"/>
+                                                    </Border>
+                                                    <Button x:Name="Del" Click="TrayDelete_Click" Tag="{Binding}" ToolTip="보관함에서 삭제 (휴지통으로 이동)"
+                                                            Width="20" Height="20" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                            Margin="0,-6,-6,0" Opacity="0.55" Cursor="Hand">
+                                                        <Button.Template>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Grid>
+                                                                    <Ellipse x:Name="DelBg" Fill="#FFE5484D"/>
+                                                                    <TextBlock Text="✕" FontSize="10" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                </Grid>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="DelBg" Property="Fill" Value="#FFF25C61"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Button.Template>
+                                                    </Button>
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                                        <Setter TargetName="Del" Property="Opacity" Value="1"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </DockPanel>
+        </Border>
+
         <!-- Canvas area: the viewport onto a very large "world" that is panned/zoomed via WorldGrid's transform -->
         <Border x:Name="Viewport" Background="White" ClipToBounds="True"
                 Focusable="True" FocusVisualStyle="{x:Null}"
