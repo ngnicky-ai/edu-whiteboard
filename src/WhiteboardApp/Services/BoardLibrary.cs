@@ -6,8 +6,11 @@ namespace WhiteboardApp.Services;
 /// <summary>The folder of boards shown on the home screen (Documents\교육용 판서).</summary>
 public static class BoardLibrary
 {
+    // EDU_WHITEBOARD_LIBRARY lets tests and screenshot runs use a separate folder instead of the user's boards.
     public static string Folder { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "교육용 판서");
+        Environment.GetEnvironmentVariable("EDU_WHITEBOARD_LIBRARY") is { Length: > 0 } custom
+            ? custom
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "교육용 판서");
 
     /// <summary>All readable boards, most recently edited first. Unreadable files are skipped.</summary>
     public static List<BoardInfo> List()

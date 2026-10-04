@@ -5,7 +5,7 @@
     <Grid x:Name="RootGrid">
         <Border x:Name="SelectionBorder"
                 BorderBrush="#FF4C9AFF"
-                BorderThickness="1.5"
+                BorderThickness="0"
                 Background="Transparent"
                 MouseLeftButtonDown="SelectionBorder_MouseLeftButtonDown"
                 MouseMove="SelectionBorder_MouseMove"
